@@ -1,0 +1,15 @@
+{
+  "scripts": {
+    "pg:init": "pg_ctl init -D questions_data",
+    "pg:start": "pg_ctl -D questions_data start",
+    "pg:createdb": "createdb -h 127.0.0.1 questions",
+    "pg:stop": "pg_ctl -D questions_data stop",
+    "start": "NODE_ENV=development && node index.js"
+  },
+  "type": "module",
+  "dependencies": {
+    "csv": "^6.2.0",
+    "express": "^4.18.1",
+    "pg": "^8.7.3"
+  }
+}
