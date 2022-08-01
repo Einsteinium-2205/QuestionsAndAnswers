@@ -5,49 +5,46 @@ postgresql();
 
 const app = express();
 
-app.get('/', async(req, res) => {
-  res.status(200).send(JSON.stringify("hi, u up? I'm soooo lost"));
-});
-
-app.get('/count', async (req, res) => {
-  const count = await process.postgresql.query('SELECT q.*, a.id, a.body AS answer_body, a.answerer_name FROM "Questions" q INNER JOIN "Answers" a on q.id = a.question_id LIMIT 1;');
-  res.status(200).send(JSON.stringify(count));
-});
-
-app.get('/qa/questions', async(req, res) => {
-  const questions = await process.postgresql.query('SELECT * FROM "Questions" LIMIT 20;');
-  res.status(200).send(JSON.stringify(questions));
-});
 
 app.get('/qa/questions/product_id=:product_id', async (req, res) => {
   const questions = await process.postgresql.query(`
-  SELECT q.id AS question_id,
-  q.body AS question_body,
-  q.date_written AS question_date,
-  q.asker_name,
-  q.helpful AS question_helpfulness,
-  q.reported,
-  a.id,
-  a.body,
-  a.date_written AS date,
-  a.answerer_name,
-  a.helpful AS helpfulness,
-  ap.url
-  FROM
-  "Questions" q INNER JOIN "Answers" a ON q.id = a.question_id
-  INNER JOIN "Answers_Photos" ap ON a.id = ap.answer_id
-  LIMIT 1;`);
+  SELECT json_build_object (
+    'question_id', id,
+    'question_body', q.body,
+    'question_date', q.date_written,
+    'asker_name', q.asker_name,
+    'question_helpfulness', q.helpful,
+    'reported', q.reported,
+    'answers', (SELECT coalesce(json_agg(json_build_object(
+      'id', a.id,
+      'body', a.body,
+      'date', a.date_written,
+      'answerer_name', a.answerer_name,
+      'helpfulness', a.helpful,
+      'photos', (SELECT coalesce (json_agg(json_build_object(
+        'photo_id', ap.id,
+        'url', ap.url
+      )), '[]')
+      from "Answers_Photos" ap where ap.answer_id = a.id)
+    )
+    ), '[]') from "Answers" a where question_id = q.id)
+  ) from "Questions" q
+  where product_id = ${req.params.product_id}
+
+;`)
   res.status(200).send((JSON.stringify(questions)));
 });
 
-app.get('/answers', async (req, res) => {
-  const rows = await process.postgresql.query('SELECT * FROM "Answers" LIMIT 20;');
-  res.status(200).send((JSON.stringify(rows)));
-});
+//'photos', (SELECT coalesce (json_agg(json_build_object(ap.*))), '[]')
 
-app.get('/answers_photos', async (req, res) => {
-  const rows = await process.postgresql.query('SELECT * FROM "Answers_Photos" LIMIT 20;');
-  res.status(200).send((typeof(rows), JSON.stringify(rows)));
+app.get('/photos/answer_id=:answer_id' , async (req, res) => {
+  const photos = await process.postgresql.query(`
+  select array_agg(url)
+  from "Answers_Photos"
+  where answer_id
+  in (select id from "Answers" where id = ${req.params.answer_id})
+  ;`)
+  res.status(200).send(JSON.stringify(photos));
 });
 
 app.listen(3000, () => {
@@ -57,7 +54,7 @@ app.listen(3000, () => {
 
 // const fs = require('fs');
 // const { parse } = require('csv-parse');
-// const parser = parse({columns: true}, function(err, records) {
+// const parser = parse({colphns: true}, function(err, records) {
 //   console.log(records);
 // })
 
