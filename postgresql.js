@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
 import postgresql from 'pg';
 import os from 'os';
 
+dotenv.config();
 
 const { Pool } = postgresql;
 
@@ -8,11 +10,10 @@ export default (callback = null) => {
 
   //make a connection pool
   const pool = new Pool({
-    user: 'Juan',
-    // user: process.env.NODE_ENV === 'development' && (os.userInfo() || {}).username || '',
-    database: 'questions',
-    host: 'localhost',
-    port: 5432,
+    user: process.env.PGUSER,
+    database: process.env.PGDATABASE,
+    host: process.env.PGHOST,
+    port: process.env.PGPORT,
   });
 
   //make the connection accessible for our app
